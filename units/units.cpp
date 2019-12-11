@@ -30,10 +30,11 @@ unit unit::root(int power) const
     if (power == 0) {
         return one;
     }
-    if (multiplier_ < 0.0 && power % 2 == 0) {
+    if (multiplier_ < 0.0f && power % 2 == 0) {
         return error;
     }
     auto bunits = base_units_.root(power);
+    // 1.0 is a very common multiplier
     if (multiplier_ == 1.0f) {
         return {base_units_.root(power), 1.0};
     }
@@ -72,7 +73,8 @@ precise_unit precise_unit::root(int power) const
         return precise::invalid;
     }
     auto bunits = base_units_.root(power);
-    if (multiplier_ == 1.0f) {
+	// 1.0 is a very common multiplier
+    if (multiplier_ == 1.0) {
         return {bunits, 1.0};
     }
 
@@ -280,34 +282,36 @@ static const umap base_unit_names{
 
 using ustr = std::pair<precise_unit, const char*>;
 // units to divide into tests to explore common multiplier units
-static UPTCONST std::array<ustr, 22> testUnits{{ustr{precise::m, "m"},
-                                                ustr{precise::s, "s"},
-                                                ustr{precise::ms, "ms"},
-                                                ustr{precise::min, "min"},
-                                                ustr{precise::hr, "hr"},
-                                                ustr{precise::time::day, "day"},
-                                                ustr{precise::lb, "lb"},
-                                                ustr{precise::ft, "ft"},
-                                                ustr{precise::ft.pow(2), "ft^2"},
-                                                ustr{precise::ft.pow(3), "ft^3"},
-                                                ustr{precise::m.pow(2), "m^2"},
-                                                ustr{precise::L, "L"},
-                                                ustr{precise::kg, "kg"},
-                                                ustr{precise::km, "km"},
-                                                ustr{precise::currency, "$"},
-                                                ustr{precise::volt, "V"},
-                                                ustr{precise::watt, "W"},
-                                                ustr{precise::kW, "kW"},
-                                                ustr{precise::mW, "mW"},
-                                                ustr{precise::MW, "MW"},
-                                                ustr{precise::s.pow(2), "s^2"},
-                                                ustr{precise::count, "item"}}};
+static UPTCONST std::array<ustr, 22> testUnits{
+    {ustr{precise::m, "m"},
+     ustr{precise::s, "s"},
+     ustr{precise::ms, "ms"},
+     ustr{precise::min, "min"},
+     ustr{precise::hr, "hr"},
+     ustr{precise::time::day, "day"},
+     ustr{precise::lb, "lb"},
+     ustr{precise::ft, "ft"},
+     ustr{precise::ft.pow(2), "ft^2"},
+     ustr{precise::ft.pow(3), "ft^3"},
+     ustr{precise::m.pow(2), "m^2"},
+     ustr{precise::L, "L"},
+     ustr{precise::kg, "kg"},
+     ustr{precise::km, "km"},
+     ustr{precise::currency, "$"},
+     ustr{precise::volt, "V"},
+     ustr{precise::watt, "W"},
+     ustr{precise::kW, "kW"},
+     ustr{precise::mW, "mW"},
+     ustr{precise::MW, "MW"},
+     ustr{precise::s.pow(2), "s^2"},
+     ustr{precise::count, "item"}}};
 
 // complex units used to reduce unit complexity
-static UPTCONST std::array<ustr, 4> creduceUnits{{ustr{precise::V.inv(), "V*"},
-                                                  ustr{precise::V, "V^-1*"},
-                                                  ustr{precise::W, "W^-1*"},
-                                                  ustr{precise::W.inv(), "W*"}}};
+static UPTCONST std::array<ustr, 4> creduceUnits{
+    {ustr{precise::V.inv(), "V*"},
+     ustr{precise::V, "V^-1*"},
+     ustr{precise::W, "W^-1*"},
+     ustr{precise::W.inv(), "W*"}}};
 
 // thought about making this constexpr array, but the problem is that runtime floats are not guaranteed to be the
 // same as compile time floats
@@ -4234,8 +4238,9 @@ static bool cleanUnitString(std::string& unit_string, uint32_t match_flags)
         ckpair{"Britishthermalunit", "BTU"},
         ckpair{"BThU", "BTU"},
         ckpair{"-US", "US"},
-        ckpair{"--",
-               "*"}, // -- is either a double negative or a separator, so make it a multiplier so it
+        ckpair{
+            "--",
+            "*"}, // -- is either a double negative or a separator, so make it a multiplier so it
         // doesn't get erased and then converted to a power
         ckpair{
             "\\\\",
