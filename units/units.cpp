@@ -382,6 +382,8 @@ static bool ReplaceStringInPlace(
     return changed;
 }
 
+// TODO: Make this a template - float(7) or double(18 or 15)
+
 // Generate an SI prefix or a numerical multiplier string for prepending a unit
 static std::string getMultiplierString(double multiplier, bool numOnly = false)
 {
@@ -395,7 +397,7 @@ static std::string getMultiplierString(double multiplier, bool numOnly = false)
         }
     }
     std::stringstream ss;
-    ss << std::setprecision(18);
+    ss << std::setprecision(18); // 18
     ss << multiplier;
     return ss.str();
 }
@@ -962,7 +964,7 @@ std::string to_string(precision_measurement measure, uint32_t match_flags)
 std::string to_string(measurement measure, uint32_t match_flags)
 {
     std::stringstream ss;
-    ss.precision(12);
+    ss.precision(7); // 12
     ss << measure.value();
     ss << ' ';
     ss << to_string(measure.units(), match_flags);
