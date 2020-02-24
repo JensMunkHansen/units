@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019,
+Copyright (c) 2019-2020,
 Lawrence Livermore National Security, LLC;
 See the top-level NOTICE for additional details. All rights reserved.
 SPDX-License-Identifier: BSD-3-Clause
@@ -8,6 +8,7 @@ SPDX-License-Identifier: BSD-3-Clause
 #include "test.hpp"
 #include "units/units.hpp"
 
+#include <cstring>
 #include <fstream>
 #include <iostream>
 
@@ -50,7 +51,7 @@ TEST_P(crashProblems, crashFiles)
     EXPECT_NO_THROW(unit_from_string(cdata));
 }
 
-INSTANTIATE_TEST_SUITE_P(crashFiles, crashProblems, ::testing::Range(1, 27));
+INSTANTIATE_TEST_SUITE_P(crashFiles, crashProblems, ::testing::Range(1, 28));
 
 TEST(fuzzFailures, timeouts)
 { // testing string that have caused a timeout from fuzz testing
@@ -65,10 +66,16 @@ TEST_P(timeoutProblems, timeoutFiles)
 {
     auto cdata = loadFailureFile("timeout", GetParam());
     ASSERT_FALSE(cdata.empty());
-    EXPECT_NO_THROW(unit_from_string(cdata));
+    precise_unit val;
+    EXPECT_NO_THROW(val = unit_from_string(cdata));
+    if (!is_error(val)) {
+        auto str = to_string(val);
+        auto u2 = unit_from_string(str);
+        EXPECT_FALSE(is_error(u2));
+    }
 }
 
-INSTANTIATE_TEST_SUITE_P(timeoutFiles, timeoutProblems, ::testing::Range(1, 22));
+INSTANTIATE_TEST_SUITE_P(timeoutFiles, timeoutProblems, ::testing::Range(1, 25));
 
 class slowProblems : public ::testing::TestWithParam<int> {
 };
@@ -212,8 +219,84 @@ TEST_P(rtripProblems, rtripFiles)
         auto str = to_string(u1);
         auto u2 = unit_from_string(str);
         EXPECT_FALSE(is_error(u2));
-        EXPECT_EQ(u2, u1);
+        if (u2 == u1) {
+            EXPECT_EQ(u2, u1);
+            EXPECT_EQ(unit_cast(u2), unit_cast(u1));
+            EXPECT_FALSE(units::unit_cast(u2) != units::unit_cast(u1));
+        } else if (!is_error(root(u2, 2))) {
+            EXPECT_EQ(root(unit_cast(u2), 2), root(unit_cast(u1), 2));
+            EXPECT_FALSE(root(units::unit_cast(u2), 2) != root(units::unit_cast(u1), 2));
+        } else if (!is_error(root(u2, 3))) {
+            EXPECT_EQ(root(unit_cast(u2), 3), root(unit_cast(u1), 3));
+            EXPECT_FALSE(root(units::unit_cast(u2), 3) != root(units::unit_cast(u1), 3));
+        } else {
+            EXPECT_TRUE(unit_cast(u2) == unit_cast(u1));
+            EXPECT_FALSE(units::unit_cast(u2) != units::unit_cast(u1));
+        }
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(rtripFiles, rtripProblems, ::testing::Range(1, 15));
+INSTANTIATE_TEST_SUITE_P(rtripFiles, rtripProblems, ::testing::Range(1, 28));
+
+TEST(fuzzFailures, rtripSingleProblems)
+{
+    auto cdata = loadFailureFile("rtrip_fail", 9);
+    auto u1 = unit_from_string(cdata);
+    if (!is_error(u1)) {
+        auto str = to_string(u1);
+        auto u2 = unit_from_string(str);
+        EXPECT_FALSE(is_error(u2));
+        if (u2 == u1) {
+            EXPECT_EQ(u2, u1);
+            EXPECT_EQ(unit_cast(u2), unit_cast(u1));
+            EXPECT_FALSE(units::unit_cast(u2) != units::unit_cast(u1));
+        } else if (!is_error(root(u2, 2))) {
+            EXPECT_EQ(root(unit_cast(u2), 2), root(unit_cast(u1), 2));
+            EXPECT_FALSE(root(units::unit_cast(u2), 2) != root(units::unit_cast(u1), 2));
+        } else if (!is_error(root(u2, 3))) {
+            EXPECT_EQ(root(unit_cast(u2), 3), root(unit_cast(u1), 3));
+            EXPECT_FALSE(root(units::unit_cast(u2), 3) != root(units::unit_cast(u1), 3));
+        } else {
+            auto uc1 = unit_cast(u1);
+            auto uc2 = unit_cast(u2);
+            EXPECT_EQ(uc2, uc1);
+            EXPECT_FALSE(uc2 != uc1);
+        }
+    }
+}
+
+class rtripflagProblems : public ::testing::TestWithParam<int> {
+};
+
+TEST_P(rtripflagProblems, rtripflagFiles)
+{
+    auto cdata = loadFailureFile("rtrip_flag", GetParam());
+    if (cdata.size() <= 4) {
+        return;
+    }
+    std::string test1 = cdata.substr(4);
+    std::uint32_t flags;
+    std::memcpy(&flags, cdata.data(), 4);
+    auto u1 = unit_from_string(test1, flags);
+    if (!is_error(u1)) {
+        auto str = to_string(u1);
+        auto u2 = unit_from_string(str);
+        EXPECT_FALSE(is_error(u2));
+        if (u2 == u1) {
+            EXPECT_EQ(u2, u1);
+            EXPECT_EQ(unit_cast(u2), unit_cast(u1));
+            EXPECT_FALSE(units::unit_cast(u2) != units::unit_cast(u1));
+        } else if (!is_error(root(u2, 2))) {
+            EXPECT_EQ(root(unit_cast(u2), 2), root(unit_cast(u1), 2));
+            EXPECT_FALSE(root(units::unit_cast(u2), 2) != root(units::unit_cast(u1), 2));
+        } else if (!is_error(root(u2, 3))) {
+            EXPECT_EQ(root(unit_cast(u2), 3), root(unit_cast(u1), 3));
+            EXPECT_FALSE(root(units::unit_cast(u2), 3) != root(units::unit_cast(u1), 3));
+        } else {
+            EXPECT_TRUE(unit_cast(u2) == unit_cast(u1));
+            EXPECT_FALSE(units::unit_cast(u2) != units::unit_cast(u1));
+        }
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(rtripflagFiles, rtripflagProblems, ::testing::Range(1, 7));

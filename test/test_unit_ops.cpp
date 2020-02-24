@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019,
+Copyright (c) 2019-2020,
 Lawrence Livermore National Security, LLC;
 See the top-level NOTICE for additional details. All rights reserved.
 SPDX-License-Identifier: BSD-3-Clause
@@ -51,7 +51,7 @@ TEST(unitOps, power)
 {
     auto m2 = m.pow(2);
     EXPECT_EQ(m * m, m2);
-    auto m4 = m.pow(4);
+    auto m4 = pow(m, 4); //use the free function form
     EXPECT_EQ(m * m * m * m, m4);
     auto m4_b = m2.pow(2);
     EXPECT_EQ(m4_b, m * m * m * m);
@@ -61,39 +61,44 @@ TEST(unitOps, power)
     EXPECT_EQ(m.inv().inv(), m.pow(-1).pow(-1));
 }
 
+#ifndef UNITS_HEADER_ONLY
 TEST(unitOps, root)
 {
-    EXPECT_EQ(m.root(0), one);
+    EXPECT_EQ(root(m, 0), one);
     auto m1 = m.pow(1);
-    EXPECT_EQ(m, m1.root(1));
-    EXPECT_EQ(m.inv(), m1.root(-1));
-    auto m2 = m.pow(2);
-    EXPECT_EQ(m, m2.root(2));
+    EXPECT_EQ(m, root(m1, 1));
+    EXPECT_EQ(m.inv(), root(m1, -1));
+    auto m2 = pow(m, 2);
+    EXPECT_EQ(m, root(m2, 2));
+
+    EXPECT_EQ(m, sqrt(m2));
+
     auto m4 = m.pow(4);
-    EXPECT_EQ(m * m, m4.root(2));
-    EXPECT_EQ(m, m4.root(4));
+    EXPECT_EQ(m * m, root(m4, 2));
+    EXPECT_EQ(m, root(m4, 4));
 
     auto ft1 = ft.pow(1);
-    EXPECT_EQ(ft, ft1.root(1));
-    EXPECT_EQ(ft.inv(), ft1.root(-1));
+    EXPECT_EQ(ft, root(ft1, 1));
+    EXPECT_EQ(ft.inv(), root(ft1, -1));
 
     auto ft2 = ft.pow(2);
-    EXPECT_EQ(ft, ft2.root(2));
-    EXPECT_EQ(ft.inv(), ft2.root(-2));
+    EXPECT_EQ(ft, root(ft2, 2));
+    EXPECT_EQ(ft.inv(), root(ft2, -2));
     auto ft3 = ft.pow(3);
-    EXPECT_EQ(ft, ft3.root(3));
-    EXPECT_EQ(ft.inv(), ft3.root(-3));
+    EXPECT_EQ(ft, root(ft3, 3));
+    EXPECT_EQ(ft.inv(), root(ft3, -3));
     auto ft4 = ft.pow(4);
-    EXPECT_EQ(ft * ft, ft4.root(2));
-    EXPECT_EQ(ft, ft4.root(4));
-    EXPECT_EQ(ft.inv(), ft4.root(-4));
+    EXPECT_EQ(ft * ft, root(ft4, 2));
+    EXPECT_EQ(ft, root(ft4, 4));
+    EXPECT_EQ(ft.inv(), root(ft4, -4));
 
     auto ft5 = ft.pow(5);
-    EXPECT_EQ(ft, ft5.root(5));
-    EXPECT_EQ(ft.inv(), ft5.root(-5));
+    EXPECT_EQ(ft, root(ft5, 5));
+    EXPECT_EQ(ft.inv(), root(ft5, -5));
 
-    EXPECT_EQ(unit(-4.5, m).root(2), error);
+    EXPECT_EQ(root(unit(-4.5, m), 2), error);
 }
+#endif
 
 TEST(unitOps, nan)
 {
@@ -133,6 +138,7 @@ TEST(unitOps, normal)
 {
     EXPECT_FALSE(isnormal(invalid));
     EXPECT_FALSE(isnormal(defunit));
+    EXPECT_FALSE(isnormal(error));
     EXPECT_TRUE(isnormal(V));
     auto zunit = unit(0.0, m);
     auto nunit = kg / zunit;
@@ -151,6 +157,16 @@ TEST(unitOps, normal)
 
     EXPECT_TRUE(isnormal(m));
     EXPECT_TRUE(isnormal(m * milli));
+}
+
+TEST(unitOps, error)
+{
+    EXPECT_TRUE(is_error(invalid));
+    EXPECT_FALSE(is_error(defunit));
+    EXPECT_FALSE(is_error(one));
+    EXPECT_TRUE(is_error(error));
+    EXPECT_FALSE(is_error(V));
+    EXPECT_TRUE(is_error(unit(constants::invalid_conversion, V)));
 }
 
 TEST(unitOps, cast)
@@ -300,46 +316,49 @@ TEST(preciseUnitOps, Power)
 {
     auto m2 = precise::m.pow(2);
     EXPECT_EQ(precise::m * precise::m, m2);
-    auto m4 = m.pow(4);
+    auto m4 = pow(m, 4);
     EXPECT_EQ(precise::m * precise::m * precise::m * precise::m, m4);
     auto m4_b = m2.pow(2);
     EXPECT_EQ(m4_b, precise::m * precise::m * precise::m * precise::m);
     EXPECT_EQ(m4_b, m2 * m2);
 }
 
+#ifndef UNITS_HEADER_ONLY
 TEST(preciseUnitOps, root)
 {
     auto m1 = precise::m.pow(1);
-    EXPECT_EQ(precise::m, m1.root(1));
-    EXPECT_EQ(precise::m.inv(), m1.root(-1));
-    auto m2 = precise::m.pow(2);
-    EXPECT_EQ(precise::m, m2.root(2));
+    EXPECT_EQ(precise::m, root(m1, 1));
+    EXPECT_EQ(precise::m.inv(), root(m1, -1));
+    auto m2 = pow(precise::m, 2); //use the alternate free function form
+    EXPECT_EQ(precise::m, root(m2, 2));
+    EXPECT_EQ(precise::m, sqrt(m2));
     auto m4 = precise::m.pow(4);
-    EXPECT_EQ(precise::m * precise::m, m4.root(2));
-    EXPECT_EQ(precise::m, m4.root(4));
+    EXPECT_EQ(precise::m * precise::m, root(m4, 2));
+    EXPECT_EQ(precise::m, root(m4, 4));
 
-    EXPECT_EQ(precise::ft.root(0), precise::one);
+    EXPECT_EQ(root(precise::ft, 0), precise::one);
     auto ft1 = precise::ft.pow(1);
-    EXPECT_EQ(precise::ft, ft1.root(1));
-    EXPECT_EQ(precise::ft.inv(), ft1.root(-1));
+    EXPECT_EQ(precise::ft, root(ft1, 1));
+    EXPECT_EQ(precise::ft.inv(), root(ft1, -1));
 
     auto ft2 = precise::ft.pow(2);
-    EXPECT_EQ(precise::ft, ft2.root(2));
-    EXPECT_EQ(precise::ft.inv(), ft2.root(-2));
+    EXPECT_EQ(precise::ft, root(ft2, 2));
+    EXPECT_EQ(precise::ft.inv(), root(ft2, -2));
     auto ft3 = precise::ft.pow(3);
-    EXPECT_EQ(precise::ft, ft3.root(3));
-    EXPECT_EQ(precise::ft.inv(), ft3.root(-3));
+    EXPECT_EQ(precise::ft, root(ft3, 3));
+    EXPECT_EQ(precise::ft.inv(), root(ft3, -3));
     auto ft4 = precise::ft.pow(4);
-    EXPECT_EQ(precise::ft * precise::ft, ft4.root(2));
-    EXPECT_EQ(precise::ft, ft4.root(4));
-    EXPECT_EQ(precise::ft.inv(), ft4.root(-4));
+    EXPECT_EQ(precise::ft * precise::ft, root(ft4, 2));
+    EXPECT_EQ(precise::ft, root(ft4, 4));
+    EXPECT_EQ(precise::ft.inv(), root(ft4, -4));
 
     auto ft5 = precise::ft.pow(5);
-    EXPECT_EQ(precise::ft, ft5.root(5));
-    EXPECT_EQ(precise::ft.inv(), ft5.root(-5));
+    EXPECT_EQ(precise::ft, root(ft5, 5));
+    EXPECT_EQ(precise::ft.inv(), root(ft5, -5));
 
-    EXPECT_TRUE(is_error((precise_unit(-4.5, m).root(2))));
+    EXPECT_TRUE(is_error(root(precise_unit(-4.5, m), 2)));
 }
+#endif
 
 TEST(preciseUnitOps, nan)
 {
@@ -362,6 +381,16 @@ TEST(preciseUnitOps, inf)
     auto nunit = precise::kg / zunit;
     EXPECT_TRUE(isinf(nunit));
     EXPECT_TRUE(isinf(precise_unit(nunit)));
+}
+
+TEST(preciseUnitOps, error)
+{
+    EXPECT_TRUE(is_error(precise::invalid));
+    EXPECT_FALSE(is_error(precise::defunit));
+    EXPECT_FALSE(is_error(precise::one));
+    EXPECT_TRUE(is_error(precise::error));
+    EXPECT_FALSE(is_error(precise::V));
+    EXPECT_TRUE(is_error(precise_unit(constants::invalid_conversion, precise::V)));
 }
 
 TEST(preciseUnitOps, normal)
@@ -489,7 +518,7 @@ TEST(preciseunitOps, inequality1)
     double start = 1.0;
     while (start < (1.0 + 2e-12)) {
         double diff = 1e-11;
-        while (diff > 2.501e-12) {
+        while (diff > 1.501e-12) {
             auto u1 = precise_unit(start, precise::V);
             auto u2 = precise_unit(start + diff, precise::V);
             auto u3 = precise_unit(start - diff, precise::V);
@@ -507,6 +536,23 @@ TEST(preciseunitOps, inequality1)
     EXPECT_EQ(eqFailNeg, 0);
 }
 
+TEST(preciseunitOps, subnormal_test)
+{
+    precise_unit u1(2.3456e-306, precise::m);
+    precise_unit u2(2.3457e-306, precise::m);
+    //these are equal to within a normal precision floating point.
+    EXPECT_TRUE(u1 == u2);
+    EXPECT_FALSE(u1 != u2);
+    EXPECT_TRUE(u2 == u1);
+
+    precise_unit u3(2.3456e-300, precise::m);
+    precise_unit u4(2.3457e-300, precise::m);
+    //these are not equal.
+    EXPECT_FALSE(u3 == u4);
+    EXPECT_TRUE(u3 != u4);
+    EXPECT_FALSE(u4 == u3);
+}
+
 TEST(invalidOps, saturate)
 {
     for (int ii = -8; ii < 8; ++ii) {
@@ -522,6 +568,26 @@ TEST(specialOps, rootHertz)
     auto res = precise::special::ASD.pow(2);
     EXPECT_EQ(res, precise::m.pow(2) / precise::s.pow(4) / precise::Hz);
     EXPECT_FALSE(is_error(precise::special::ASD));
+
+    auto rh = precise::special::rootHertz;
+
+    EXPECT_EQ(rh.pow(1), rh);
+    EXPECT_EQ(rh.pow(0), precise::one);
+    EXPECT_EQ(rh.pow(2), Hz);
+    EXPECT_EQ(rh.pow(-2), s);
+
+    EXPECT_EQ(rh.pow(4), Hz.pow(2));
+    EXPECT_EQ(rh.pow(-4), s.pow(2));
+
+    auto rhinv = rh.inv();
+    EXPECT_EQ(rhinv.pow(2), s);
+
+    //EXPECT_EQ(rh.pow(3).pow(2), Hz.pow(3));
+    //EXPECT_EQ(rh.pow(4), Hz.pow(2));
+    //EXPECT_EQ(rh.pow(6), Hz.pow(3));
+    //EXPECT_EQ(rh.pow(-2), s);
+    //EXPECT_EQ(rh.pow(-4), s.pow(2));
+    //EXPECT_EQ(rh.pow(-6), s.pow(3));
 }
 
 TEST(customUnits, definition)

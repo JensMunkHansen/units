@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019,
+Copyright (c) 2019-2020,
 Lawrence Livermore National Security, LLC;
 See the top-level NOTICE for additional details. All rights reserved.
 SPDX-License-Identifier: BSD-3-Clause
@@ -258,6 +258,8 @@ TEST(countConversions, mols)
     using namespace units;
     EXPECT_NEAR(convert(mol, count), 6.02214076e23, test::precise_tolerance);
     EXPECT_NEAR(convert(mol.inv(), one), 1.0 / 6.02214076e23, test::precise_tolerance);
+    EXPECT_NEAR(convert(count, mol), 1.0 / 6.02214076e23, test::precise_tolerance);
+    EXPECT_NEAR(convert(one, mol.inv()), 6.02214076e23, test::precise_tolerance);
     // failed conversion
     EXPECT_TRUE(std::isnan(convert(mol.pow(2), count)));
     EXPECT_TRUE(std::isnan(convert(mol.pow(2), count.pow(2))));

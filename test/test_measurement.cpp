@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019,
+Copyright (c) 2019-2020,
 Lawrence Livermore National Security, LLC;
 See the top-level NOTICE for additional details. All rights reserved.
 SPDX-License-Identifier: BSD-3-Clause
@@ -33,12 +33,18 @@ TEST(Measurement, ops)
     auto rat = d1 / d2;
     EXPECT_EQ(rat.value(), 45.0 / 79);
     EXPECT_TRUE(rat.units() == ratio);
+
+    EXPECT_TRUE(2.0 / m == measurement(2.0, m.inv()));
+    EXPECT_TRUE(m / 2.0 == measurement(0.5, m));
+    EXPECT_TRUE(m * 2.0 == measurement(2.0, m));
+
+    //equivalent to asking how much is left over if you divide a 2 m object into  6 inch chunks
+    auto fd11 = (2.0 * m) % (6 * in);
+    EXPECT_LT(fd11, (6 * in));
 }
 
 TEST(Measurement, doubleOps)
 {
-    measurement d1(45.0, s);
-
     auto freq = 9.0 / s;
     EXPECT_EQ(freq.units(), one / s);
     auto freq2 = 9.0 * Hz;
@@ -58,6 +64,9 @@ TEST(Measurement, doubleOps)
     auto fd2 = 27.0 / freq;
     EXPECT_DOUBLE_EQ(fd2.value(), 3.0);
     EXPECT_EQ(fd2.units(), s);
+
+    auto fd11 = (27.0 * m) % 6;
+    EXPECT_DOUBLE_EQ(fd11.value(), 3.0);
 }
 
 TEST(Measurement, help_constructors)
@@ -124,13 +133,36 @@ TEST(Measurement, conversions)
     EXPECT_FLOAT_EQ(static_cast<float>(d4.value()), 1.0f);
 }
 
+TEST(measurement, powroot)
+{
+    measurement m1(2.0, m);
+
+    auto v1 = pow(m1, 3);
+    EXPECT_EQ(v1.value(), 8.0);
+    EXPECT_EQ(v1.units(), m.pow(3));
+#ifndef UNITS_HEADER_ONLY
+    auto m2 = root(v1, 3);
+    EXPECT_TRUE(m2 == m1);
+
+    auto m0 = root(v1, 0);
+    EXPECT_EQ(m0.value(), 1.0);
+    EXPECT_EQ(m0.units(), one);
+
+    measurement m4(16.0, m.pow(2));
+    EXPECT_EQ(sqrt(m4), measurement(4.0, m));
+#endif
+}
+
 using namespace units;
 TEST(fixedMeasurement, ops)
 {
-    fixed_measurement_type<double> d1(45.0, m);
-    fixed_measurement_type<double> d2(79, m);
+    fixed_measurement d1(45.0, m);
+    fixed_measurement d2(79, m);
+    fixed_measurement d3(79 * m);
 
     auto area = d1 * d2;
+
+    EXPECT_TRUE(d2 == d3);
     EXPECT_EQ(area.value(), 45.0 * 79);
     EXPECT_TRUE(area.units() == m * m);
 
@@ -173,6 +205,76 @@ TEST(fixedMeasurement, ops_v2)
     auto rat = d1 / d2;
     EXPECT_EQ(rat.value(), 45.0 / 79);
     EXPECT_TRUE(rat.units() == ratio);
+
+    auto m1 = d2 / s;
+    fixed_measurement spd(m1);
+    auto m3 = spd * s;
+
+    EXPECT_TRUE(d2 == m3);
+    EXPECT_TRUE(m3 == d2);
+
+    fixed_measurement fm3(2.0, m);
+    fm3 *= 2.0;
+    EXPECT_EQ(fm3.value(), 4.0);
+    fm3 /= 4.0;
+    EXPECT_EQ(fm3.value(), 1.0);
+
+    auto v = fm3 *= 2.0;
+    EXPECT_EQ(v.value(), 2.0);
+}
+
+TEST(fixedMeasurement, methods)
+{
+    fixed_measurement size(1.2, m);
+    auto f2 = size.convert_to(in);
+    EXPECT_TRUE(f2 == size);
+
+    measurement m3(1.0, f2.as_unit());
+    EXPECT_DOUBLE_EQ(m3.value(), 1.0);
+    EXPECT_TRUE(m3 == f2);
+
+    EXPECT_FLOAT_EQ(static_cast<float>(f2.value_as(m)), 1.2F);
+    EXPECT_FLOAT_EQ(static_cast<float>(size.value_as(f2.as_unit())), 1.0F);
+
+    size += 0.1;
+    EXPECT_TRUE(size > f2);
+    EXPECT_TRUE(size > m3);
+    EXPECT_TRUE(f2 < size);
+    EXPECT_TRUE(m3 < size);
+    EXPECT_TRUE(size > 1.2);
+    EXPECT_TRUE(1.2 < size);
+
+    EXPECT_TRUE(size >= f2);
+    EXPECT_TRUE(size >= m3);
+    EXPECT_TRUE(f2 <= size);
+    EXPECT_TRUE(m3 <= size);
+    EXPECT_TRUE(size >= 1.2);
+    EXPECT_TRUE(1.2 <= size);
+
+    size -= 0.1;
+    EXPECT_TRUE(size == f2);
+    EXPECT_TRUE(size == m3);
+    EXPECT_TRUE(f2 == size);
+    EXPECT_TRUE(m3 == size);
+    EXPECT_TRUE(size == 1.2);
+    EXPECT_TRUE(1.2 == size);
+
+    EXPECT_FALSE(size != 1.2);
+    EXPECT_FALSE(1.2 != size);
+
+    EXPECT_TRUE(size >= f2);
+    EXPECT_TRUE(size >= m3);
+    EXPECT_TRUE(f2 >= size);
+    EXPECT_TRUE(m3 >= size);
+    EXPECT_TRUE(size >= 1.2);
+    EXPECT_TRUE(1.2 >= size);
+
+    EXPECT_TRUE(size <= f2);
+    EXPECT_TRUE(size <= m3);
+    EXPECT_TRUE(f2 <= size);
+    EXPECT_TRUE(m3 <= size);
+    EXPECT_TRUE(size <= 1.2);
+    EXPECT_TRUE(1.2 <= size);
 }
 
 TEST(fixedMeasurement, doubleOps)
@@ -205,6 +307,13 @@ TEST(fixedMeasurement, doubleOps)
 
     auto fp4 = 12.0 - freq;
     EXPECT_FLOAT_EQ(static_cast<float>(fp4.value()), 3.0);
+
+    fixed_measurement y(2.0 * m);
+    EXPECT_DOUBLE_EQ(y.value(), 2.0);
+    y = 5.0 * m;
+    EXPECT_DOUBLE_EQ(y.value(), 5.0);
+    y = 7.0;
+    EXPECT_DOUBLE_EQ(y.value(), 7.0);
 }
 
 TEST(fixedMeasurement, comparison)
@@ -231,10 +340,26 @@ TEST(fixedMeasurement, comparison)
     EXPECT_FALSE((1 * in) <= (2.0 * cm));
 }
 
-TEST(PrecisionMeasurement, ops)
+TEST(fixedMeasurement, powroot)
 {
-    precision_measurement d1(45.0, precise::m);
-    precision_measurement d2(79, precise::m);
+    fixed_measurement m1(2.0, m);
+
+    auto v1 = pow(m1, 3);
+    EXPECT_EQ(v1.value(), 8.0);
+    EXPECT_EQ(v1.units(), m.pow(3));
+#ifndef UNITS_HEADER_ONLY
+    auto m2 = root(v1, 3);
+    EXPECT_TRUE(m2 == m1);
+
+    fixed_measurement m4(16.0, m.pow(2));
+    EXPECT_TRUE(sqrt(m4) == fixed_measurement(4.0, m));
+#endif
+}
+
+TEST(PreciseMeasurement, ops)
+{
+    precise_measurement d1(45.0, precise::m);
+    precise_measurement d2(79, precise::m);
 
     auto area = d1 * d2;
     EXPECT_EQ(area.value(), 45.0 * 79);
@@ -256,10 +381,8 @@ TEST(PrecisionMeasurement, ops)
     EXPECT_TRUE(rat.units() == ratio);
 }
 
-TEST(PrecisionMeasurement, doubleOps)
+TEST(PreciseMeasurement, doubleOps)
 {
-    precision_measurement d1(45.0, precise::s);
-
     auto freq = 9.0 / precise::s;
     EXPECT_EQ(freq.units(), precise::one / precise::s);
     auto freq2 = 9.0 * precise::Hz;
@@ -281,7 +404,7 @@ TEST(PrecisionMeasurement, doubleOps)
     EXPECT_EQ(fd2.units(), precise::s);
 }
 
-TEST(PrecisionMeasurement, help_constructors)
+TEST(PreciseMeasurement, help_constructors)
 {
     auto d1 = 45.0 * precise::m;
     auto d2 = precise::m * 79.0;
@@ -310,7 +433,7 @@ TEST(PrecisionMeasurement, help_constructors)
     EXPECT_TRUE(rat.units() == ratio);
 }
 
-TEST(PrecisionMeasurement, conversions)
+TEST(PreciseMeasurement, conversions)
 {
     auto d1 = 45.0 * precise::ft;
     auto d2 = d1.convert_to_base();
@@ -329,7 +452,7 @@ TEST(PrecisionMeasurement, conversions)
     EXPECT_EQ(d4.value(), 1.0);
 }
 
-TEST(PrecisionMeasurement, comparison)
+TEST(PreciseMeasurement, comparison)
 {
     EXPECT_TRUE(1000.0 * precise::m == 1 * precise::km);
     EXPECT_FALSE(1000.0 * precise::m != 1 * precise::km);
@@ -345,11 +468,26 @@ TEST(PrecisionMeasurement, comparison)
     EXPECT_FALSE((1 * precise::in) <= (2.0 * precise::cm));
 }
 
-using namespace units;
-TEST(fixedPrecisionMeasurement, ops)
+TEST(PreciseMeasurement, powroot)
 {
-    fixed_precision_measurement d1(45.0, precise::m);
-    fixed_precision_measurement d2(79, precise::m);
+    precise_measurement m1(2.0, precise::m);
+
+    auto v1 = pow(m1, 3);
+    EXPECT_EQ(v1.value(), 8.0);
+    EXPECT_EQ(v1.units(), precise::m.pow(3));
+#ifndef UNITS_HEADER_ONLY
+    auto m2 = root(v1, 3);
+    EXPECT_TRUE(m2 == m1);
+    precise_measurement m4(16.0, precise::m.pow(2));
+    EXPECT_EQ(sqrt(m4), precise_measurement(4.0, precise::m));
+#endif
+}
+
+using namespace units;
+TEST(fixedPreciseMeasurement, ops)
+{
+    fixed_precise_measurement d1(45.0, precise::m);
+    fixed_precise_measurement d2(79, precise::m);
 
     auto area = d1 * d2;
     EXPECT_EQ(area.value(), 45.0 * 79);
@@ -369,4 +507,27 @@ TEST(fixedPrecisionMeasurement, ops)
     auto rat = d1 / d2;
     EXPECT_EQ(rat.value(), 45.0 / 79);
     EXPECT_TRUE(rat.units() == ratio);
+
+    fixed_precise_measurement y(2.0 * precise::m);
+    EXPECT_DOUBLE_EQ(y.value(), 2.0);
+    y = 5.0 * precise::m;
+    EXPECT_DOUBLE_EQ(y.value(), 5.0);
+    y = 7.0;
+    EXPECT_DOUBLE_EQ(y.value(), 7.0);
+}
+
+TEST(fixedPreciseMeasurement, powroot)
+{
+    fixed_precise_measurement m1(2.0, precise::m);
+
+    auto v1 = pow(m1, 3);
+    EXPECT_EQ(v1.value(), 8.0);
+    EXPECT_EQ(v1.units(), precise::m.pow(3));
+#ifndef UNITS_HEADER_ONLY
+    auto m2 = root(v1, 3);
+    EXPECT_TRUE(m2 == m1);
+
+    fixed_precise_measurement m4(16.0, precise::m.pow(2));
+    EXPECT_TRUE(sqrt(m4) == fixed_precise_measurement(4.0, precise::m));
+#endif
 }

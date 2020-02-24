@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019,
+Copyright (c) 2019-2020,
 Lawrence Livermore National Security, LLC;
 See the top-level NOTICE for additional details. All rights reserved.
 SPDX-License-Identifier: BSD-3-Clause
@@ -387,7 +387,12 @@ TEST(UCUM, TestMatchingSynonym)
                             continue;
                         }
                     }
-                    std::cout << synonym << " is not a synonym for " << csCode << '\n';
+                    if (nameact.has_same_base(csact)) {
+                        std::cout << synonym << " is not an exact match for " << csCode
+                                  << " but has the same base units\n";
+                    } else {
+                        std::cout << synonym << " is not a synonym for " << csCode << '\n';
+                    }
                     ++nameMismatch;
                     nameact = units::unit_from_string(synonym);
                 }
@@ -514,8 +519,8 @@ TEST(UCUM, TestRoundTrip2)
                       << " does not result in a valid ustring unit for " << name << '\n';
 
             ++ciFail;
-            units::unit_from_string(ustring);
-            to_string(csact);
+            // units::unit_from_string(ustring);
+            // to_string(csact);
         }
 
         if (uact != csact) {

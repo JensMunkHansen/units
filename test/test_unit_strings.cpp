@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2019,
+Copyright (c) 2019-2020,
 Lawrence Livermore National Security, LLC;
 See the top-level NOTICE for additional details. All rights reserved.
 SPDX-License-Identifier: BSD-3-Clause
@@ -18,6 +18,7 @@ TEST(unitStrings, Simple)
     EXPECT_EQ(to_string(V), "V");
     EXPECT_EQ(to_string(rad), "rad");
     EXPECT_EQ(to_string(cd), "cd");
+    EXPECT_EQ(to_string(pu), "pu");
 }
 
 TEST(unitStrings, Derived)
@@ -107,11 +108,20 @@ TEST(unitStrings, infinite)
     EXPECT_EQ(to_string(unit(-std::numeric_limits<double>::infinity(), m / s)), "-INF*m/s");
 }
 
+TEST(unitString, almostInfinite)
+{
+    precise_unit almost_inf(precise::s.pow(3) * precise::kg * precise::mol, 4.414e307);
+
+    auto res = to_string(almost_inf);
+    auto ai2 = unit_from_string(res);
+    EXPECT_EQ(unit_cast(almost_inf), unit_cast(ai2));
+}
+
 TEST(unitStrings, nan)
 {
     EXPECT_EQ(to_string(precise::error), "ERROR");
 
-    EXPECT_EQ(to_string(precise::invalid), "ERROR");
+    EXPECT_EQ(to_string(precise::invalid), "NaN*ERROR");
     auto nanunit = precise_unit(std::numeric_limits<double>::quiet_NaN(), precise::one);
     auto res = to_string(nanunit);
     EXPECT_EQ(res, "NaN");
@@ -177,6 +187,7 @@ TEST(unitStrings, crazyunits)
     unit tc{detail::unit_data(1, 1, -3, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0)};
     str = to_string(tc);
     EXPECT_EQ(str, "W*m^-1*K^-1");
+    EXPECT_EQ(to_string(precise_unit(10, precise::pu)), "10*pu");
 }
 
 TEST(unitStrings, customUnits)
@@ -269,6 +280,14 @@ TEST(stringToUnits, NumericalMultipliers)
     EXPECT_EQ(precise_unit(0.7564, precise::kg), unit_from_string("0.7564kg"));
 }
 
+TEST(stringToUnits, outOfRangeNumbers)
+{
+    auto u1 = unit_from_string("2.76e309m");
+    EXPECT_TRUE(isinf(u1));
+    auto ucs = unit_cast_from_string("2.76e309m");
+    EXPECT_TRUE(isinf(ucs));
+}
+
 TEST(stringToUnits, words)
 {
     EXPECT_EQ(precise::mph, unit_from_string("miles per hour"));
@@ -345,6 +364,9 @@ TEST(stringToUnits, interestingUnits)
 
     unit = unit_from_string("ZAM", case_insensitive);
     EXPECT_EQ(unit, precise_unit(1e21, precise::m));
+
+    unit = unit_from_string("m per s2 per Hz^1/2");
+    EXPECT_EQ(unit, precise::special::ASD);
 }
 
 TEST(stringToUnits, customUnitforms)
@@ -413,6 +435,8 @@ TEST(stringToUnits, equivalents3)
     EXPECT_EQ(u2, precise::mol * precise::ft.pow(3));
     EXPECT_EQ(unit_from_string("(1)^345"), precise::one);
     EXPECT_EQ(unit_from_string("\t\t\t\t \r\n\n"), precise::defunit);
+    auto u3 = unit_from_string("2^345");
+    EXPECT_EQ(u3.multiplier(), std::pow(2.0, 345.0));
 }
 
 class roundTripString : public ::testing::TestWithParam<std::string> {
@@ -666,7 +690,9 @@ TEST(commoditizedUnits, numericalWords)
 
 TEST(funnyStrings, underscore)
 {
-    EXPECT_FALSE(is_valid(unit_from_string("_45_625_252_22524_252452_25242522562_E522_")));
+    auto bigNumber = unit_from_string("_45_625_252_22524_252452_25242522562_E522_");
+    EXPECT_FALSE(isfinite(bigNumber));
+    EXPECT_TRUE(isinf(bigNumber));
 
     EXPECT_EQ(precise_unit(45625252.0, precise::m), unit_from_string("_45_625_252_m_"));
 
@@ -680,8 +706,11 @@ TEST(funnyStrings, underscore)
 
 TEST(funnyStrings, outofrange)
 { // these are mainly testing that it doesn't throw
-    EXPECT_FALSE(is_valid(unit_from_string("1532^34e505"))); // out of range error
-    EXPECT_FALSE(is_valid(unit_from_string("34e505"))); // out of range
+    EXPECT_FALSE(isfinite(unit_from_string("1532^34e505"))); // out of range error
+    EXPECT_TRUE(isinf(unit_from_string("34e505"))); // out of range
+    EXPECT_TRUE(isinf(unit_from_string("-34e505"))); // out of range
+
+    EXPECT_TRUE(isinf(unit_from_string("34.785e12458"))); // out of range of quad precision
 }
 
 TEST(funnyStrings, powersof1)
