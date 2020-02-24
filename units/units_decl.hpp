@@ -83,18 +83,12 @@ namespace detail {
                 currency_ - other.currency_,
                 count_ - other.count_,
                 radians_ - other.radians_,
-<<<<<<< HEAD
-                (per_unit_ != 0 || other.per_unit_ != 0) ? 1u : 0,
-                ((i_flag_ != 0) ^ (other.i_flag_ != 0)) ? 1u : 0,
-                ((e_flag_ != 0) ^ (other.e_flag_ != 0)) ? 1u : 0,
-                (equation_ != 0 || other.equation_ != 0) ? 1u : 0};
-=======
+
                 static_cast<unsigned int>(per_unit_ | other.per_unit_),
                 static_cast<unsigned int>(i_flag_ ^ other.i_flag_),
                 static_cast<unsigned int>(e_flag_ ^ other.e_flag_),
                 static_cast<unsigned int>(equation_ | other.equation_),
             };
->>>>>>> upstream/master
         }
         /// invert the unit
         constexpr unit_data inv() const
@@ -119,26 +113,6 @@ namespace detail {
         constexpr unit_data pow(int power) const
         { // the +e_flag_ on seconds is to handle a few weird operations that generate a square_root hz operation,
             // the e_flag allows some recovery of that unit and handling of that peculiar situation
-<<<<<<< HEAD
-            return {
-                meter_ * power,
-                kilogram_ * power,
-                second_ * power -
-                    ((e_flag_ > 0u && second_ != 0) ?
-                         ((second_ < 0) ? (power >> 1) : -(power >> 1)) :
-                         0),
-                ampere_ * power,
-                kelvin_ * power,
-                mole_ * power,
-                candela_ * power,
-                currency_ * power,
-                count_ * power,
-                radians_ * power,
-                per_unit_,
-                i_flag_ * ((power % 2 == 0) ? 0u : 1u),
-                0, // zero out e_flag
-                equation_};
-=======
             return {meter_ * power,
                     kilogram_ * power,
                     (second_ * power) + rootHertzModifier(power),
@@ -153,7 +127,6 @@ namespace detail {
                     (power % 2 == 0) ? 0U : i_flag_,
                     (power % 2 == 0) ? 0U : e_flag_,
                     equation_};
->>>>>>> upstream/master
         }
         constexpr unit_data root(int power) const
         {
@@ -622,20 +595,11 @@ class precise_unit {
     /// Multiply with another unit
     constexpr precise_unit operator*(precise_unit other) const
     {
-<<<<<<< HEAD
-        return {
-            base_units_ + other.base_units_,
-            (commodity_ == 0) ?
-                other.commodity_ :
-                ((other.commodity_ == 0) ? commodity_ : commodity_ & other.commodity_),
-            multiplier() * other.multiplier()};
-=======
         return {base_units_ * other.base_units_,
                 (commodity_ == 0) ?
                     other.commodity_ :
                     ((other.commodity_ == 0) ? commodity_ : commodity_ & other.commodity_),
                 multiplier() * other.multiplier()};
->>>>>>> upstream/master
     }
     /// Multiplication operator with a lower precision unit
     constexpr precise_unit operator*(unit other) const
@@ -645,20 +609,11 @@ class precise_unit {
     /// Division operator
     constexpr precise_unit operator/(precise_unit other) const
     {
-<<<<<<< HEAD
-        return {
-            base_units_ - other.base_units_,
-            (commodity_ == 0) ?
-                ((other.commodity_ == 0) ? 0 : ~other.commodity_) :
-                ((other.commodity_ == 0) ? commodity_ : commodity_ & (~other.commodity_)),
-            multiplier() / other.multiplier()};
-=======
         return {base_units_ / other.base_units_,
                 (commodity_ == 0) ?
                     ((other.commodity_ == 0) ? 0 : ~other.commodity_) :
                     ((other.commodity_ == 0) ? commodity_ : commodity_ & (~other.commodity_)),
                 multiplier() / other.multiplier()};
->>>>>>> upstream/master
     }
     /// Divide by a less precise unit
     constexpr precise_unit operator/(unit other) const
@@ -694,20 +649,12 @@ class precise_unit {
     {
         return base_units_.has_same_base(other.base_units_);
     }
-<<<<<<< HEAD
-    /// Check if the units have the same base unit (ie they measure the same thing)
-=======
     /// Check if the units have the same base unit (i.e. they measure the same thing)
->>>>>>> upstream/master
     constexpr bool has_same_base(unit other) const
     {
         return base_units_.has_same_base(other.base_units_);
     }
-<<<<<<< HEAD
-    /// Check if the unis has the same base units as a unit_data object
-=======
     /// Check if the units has the same base units as a unit_data object
->>>>>>> upstream/master
     constexpr bool has_same_base(detail::unit_data base) const
     {
         return base_units_.has_same_base(base);
